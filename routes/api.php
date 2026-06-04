@@ -12,8 +12,8 @@ use Illuminate\Support\Facades\Route;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
-// KATEGORI - publik
-Route::get('/kategori', [CategoryController::class, 'index']);
+// Ubah dari /kategori menjadi /categories
+Route::get('/categories', [CategoryController::class, 'index']);
 
 // AUTH untuk semua role yang sudah login
 Route::middleware('auth:sanctum')->group(function () {
@@ -51,4 +51,9 @@ Route::middleware(['auth:sanctum', 'role:superadmin'])->group(function () {
     Route::get('/superadmin/laporan', [SuperAdminController::class, 'complaints']);
     Route::get('/superadmin/statistik', [SuperAdminController::class, 'statistics']);
     Route::get('/superadmin/logs', [SuperAdminController::class, 'logs']);
+
+    Route::get('/superadmin/categories',        [CategoryController::class, 'indexAdmin']);
+    Route::post('/superadmin/categories',       [CategoryController::class, 'store']);
+    Route::patch('/superadmin/categories/{id}', [CategoryController::class, 'update']);
+    Route::delete('/superadmin/categories/{id}',[CategoryController::class, 'destroy']);
 });

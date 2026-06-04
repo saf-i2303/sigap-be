@@ -14,6 +14,7 @@ return new class extends Migration
     $table->foreignUuid('admin_id')->constrained('users')->onDelete('cascade');
     $table->enum('status_after_response', ['diverifikasi', 'diproses', 'selesai', 'ditolak']);
     $table->text('message');
+    $table->timestamp('estimated_at')->nullable(); 
     $table->timestamps();
 });
     }   

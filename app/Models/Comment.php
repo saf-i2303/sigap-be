@@ -14,6 +14,11 @@ class Comment extends Model
         'complaint_id',
         'status_after_response',
         'message',
+        'estimated_at',         
+    ];
+
+    protected $casts = [
+        'estimated_at' => 'datetime', // ← otomatis cast ke Carbon
     ];
 
     public function complaint()

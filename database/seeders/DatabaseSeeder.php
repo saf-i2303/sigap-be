@@ -8,9 +8,11 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // Eksekusi seeder secara modular dan rapi
         $this->call([
-            SuperAdminSeeder::class,
-            CategorySeeder::class,
+            SuperAdminSeeder::class,   
+            AdminWilayahSeeder::class, 
+            CategorySeeder::class,     
         ]);
     }
 }
