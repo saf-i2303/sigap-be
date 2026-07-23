@@ -8,10 +8,7 @@ use Illuminate\Support\Str;
 
 class CategoryController extends Controller
 {
-    /**
-     * GET /categories
-     * Untuk user — hanya kategori aktif dengan children aktif
-     */
+   
     public function index()
     {
         $categories = Category::active()
@@ -27,10 +24,6 @@ class CategoryController extends Controller
         ]);
     }
 
-    /**
-     * GET /superadmin/categories
-     * Untuk superadmin — semua kategori termasuk nonaktif
-     */
     public function indexAdmin()
     {
         $categories = Category::whereNull('parent_id')
@@ -41,9 +34,7 @@ class CategoryController extends Controller
         return response()->json($categories);
     }
 
-    /**
-     * POST /superadmin/categories
-     */
+    
     public function store(Request $request)
     {
         $request->validate([
@@ -68,9 +59,7 @@ class CategoryController extends Controller
         ], 201);
     }
 
-    /**
-     * PATCH /superadmin/categories/{id}
-     */
+   
     public function update(Request $request, int $id)
     {
         $request->validate([
@@ -94,21 +83,18 @@ class CategoryController extends Controller
         ]);
     }
 
-    /**
-     * DELETE /superadmin/categories/{id}
-     */
+    
     public function destroy(int $id)
     {
         $category = Category::findOrFail($id);
 
-        // Hapus children dulu kalau ada
+        // Hapus children kalau ada
         $category->children()->delete();
         $category->delete();
 
         return response()->json(['message' => 'Kategori berhasil dihapus.']);
     }
 
-    // ── Helper ─────────────────────────────────────────────────
 
     private function uniqueSlug(string $name, ?int $parentId, ?int $exceptId = null): string
     {

@@ -6,54 +6,65 @@ use App\Http\Controllers\Api\User\ComplaintController;
 use App\Http\Controllers\Api\User\NotificationController;
 use App\Http\Controllers\Api\Admin\AdminComplaintController;
 use App\Http\Controllers\Api\SuperAdmin\SuperAdminController;
+use App\Http\Controllers\Api\Petugas\PetugasController;
 use Illuminate\Support\Facades\Route;
 
-// AUTH - publik
+// ── Public ────────────────────────────────────────────────────
 Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-
-// Ubah dari /kategori menjadi /categories
+Route::post('/login',    [AuthController::class, 'login']);
 Route::get('/categories', [CategoryController::class, 'index']);
 
-// AUTH untuk semua role yang sudah login
+// ── Authenticated (semua role) ────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/me', [AuthController::class, 'me']);
+    Route::get('/me',      [AuthController::class, 'me']);
+
+    Route::get('/notifications',              [NotificationController::class, 'index']);
+    Route::patch('/notifications/{id}/read',  [NotificationController::class, 'markAsRead']);
 });
 
-// USER
+// ── User ──────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum', 'role:user'])->group(function () {
-    Route::get('/laporan', [ComplaintController::class, 'index']);
-    Route::post('/laporan', [ComplaintController::class, 'store']);
-    Route::get('/laporan/{id}', [ComplaintController::class, 'show']);
-    Route::delete('/laporan/{id}', [ComplaintController::class, 'destroy']);
-    Route::get('/laporan/{id}/komentar', [ComplaintController::class, 'comments']);
-    Route::get('/notifikasi', [NotificationController::class, 'index']);
-    Route::patch('/notifikasi/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::get('/laporan',              [ComplaintController::class, 'index']);
+    Route::post('/laporan',             [ComplaintController::class, 'store']);
+    Route::get('/laporan/{id}',         [ComplaintController::class, 'show']);
+    Route::post('/laporan/{id}',        [ComplaintController::class, 'update']);
+    Route::delete('/laporan/{id}',      [ComplaintController::class, 'destroy']);
+    Route::get('/laporan/{id}/komentar',[ComplaintController::class, 'comments']);
 });
 
-// ADMIN
-Route::middleware(['auth:sanctum', 'role:admin'])->group(function () {
-    Route::get('/admin/laporan', [AdminComplaintController::class, 'index']);
-    Route::get('/admin/laporan/{id}', [AdminComplaintController::class, 'show']);
-    Route::patch('/admin/laporan/{id}/priority', [AdminComplaintController::class, 'setPriority']);
-    Route::patch('/admin/laporan/{id}/status', [AdminComplaintController::class, 'updateStatus']);
-    Route::post('/admin/laporan/{id}/komentar', [AdminComplaintController::class, 'addComment']);
-    Route::post('/admin/laporan/{id}/respon', [AdminComplaintController::class, 'addResponse']);
+// ── Admin ─────────────────────────────────────────────────────
+Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
+    Route::get('/laporan',                        [AdminComplaintController::class, 'index']);
+    Route::get('/laporan/{id}',                   [AdminComplaintController::class, 'show']);
+    Route::patch('/laporan/{id}/priority',        [AdminComplaintController::class, 'setPriority']);
+    Route::patch('/laporan/{id}/status',          [AdminComplaintController::class, 'updateStatus']);
+    Route::post('/laporan/{id}/komentar',         [AdminComplaintController::class, 'addComment']);
+    Route::post('/laporan/{id}/respon',           [AdminComplaintController::class, 'addResponse']);
+    Route::put('/komentar/{commentId}',           [AdminComplaintController::class, 'updateComment']);
+    Route::delete('/komentar/{commentId}',        [AdminComplaintController::class, 'destroyComment']);
 });
 
-// SUPERADMIN
-Route::middleware(['auth:sanctum', 'role:superadmin'])->group(function () {
-    Route::get('/superadmin/users', [SuperAdminController::class, 'index']);
-    Route::post('/superadmin/users', [SuperAdminController::class, 'store']);
-    Route::patch('/superadmin/users/{id}', [SuperAdminController::class, 'update']);
-    Route::delete('/superadmin/users/{id}', [SuperAdminController::class, 'destroy']);
-    Route::get('/superadmin/laporan', [SuperAdminController::class, 'complaints']);
-    Route::get('/superadmin/statistik', [SuperAdminController::class, 'statistics']);
-    Route::get('/superadmin/logs', [SuperAdminController::class, 'logs']);
+// ── SuperAdmin ────────────────────────────────────────────────
+Route::middleware(['auth:sanctum', 'role:superadmin'])->prefix('superadmin')->group(function () {
+    Route::get('/users',          [SuperAdminController::class, 'index']);
+    Route::post('/users',         [SuperAdminController::class, 'store']);
+    Route::patch('/users/{id}',   [SuperAdminController::class, 'update']);
+    Route::delete('/users/{id}',  [SuperAdminController::class, 'destroy']);
+    Route::get('/laporan',        [SuperAdminController::class, 'complaints']);
+    Route::get('/statistik',      [SuperAdminController::class, 'statistics']);
+    Route::get('/logs',           [SuperAdminController::class, 'logs']);
 
-    Route::get('/superadmin/categories',        [CategoryController::class, 'indexAdmin']);
-    Route::post('/superadmin/categories',       [CategoryController::class, 'store']);
-    Route::patch('/superadmin/categories/{id}', [CategoryController::class, 'update']);
-    Route::delete('/superadmin/categories/{id}',[CategoryController::class, 'destroy']);
+    Route::get('/categories',         [CategoryController::class, 'indexAdmin']);
+    Route::post('/categories',        [CategoryController::class, 'store']);
+    Route::patch('/categories/{id}',  [CategoryController::class, 'update']);
+    Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
+});
+
+// ── Petugas ───────────────────────────────────────────────────
+Route::middleware(['auth:sanctum', 'role:petugas'])->prefix('petugas')->group(function () {
+    Route::get('/me',                         [PetugasController::class, 'me']);
+    Route::get('/laporan',                    [PetugasController::class, 'index']);
+    Route::get('/laporan/{id}',               [PetugasController::class, 'show']);
+    Route::post('/laporan/{id}/progress',     [PetugasController::class, 'addProgress']);
 });

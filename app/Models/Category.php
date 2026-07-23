@@ -10,7 +10,6 @@ use Illuminate\Support\Str;
 
 class Category extends Model
 {
-    // 1. Perbarui fillable sesuai kolom baru
     protected $fillable = [
         'parent_id',
         'name',
@@ -19,9 +18,7 @@ class Category extends Model
         'is_active',
     ];
 
-    /**
-     * Otomatis membuat slug dari name saat data disimpan.
-     */
+    
     protected static function boot()
     {
         parent::boot();

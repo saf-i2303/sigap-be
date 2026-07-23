@@ -55,9 +55,7 @@ class AdminComplaintController extends Controller
             ->where('wilayah', $admin->wilayah)
             ->firstOrFail();
 
-        $complaint->update([
-            'admin_priority' => $request->admin_priority,
-        ]);
+        $complaint->update(['admin_priority' => $request->admin_priority]);
 
         return response()->json([
             'message'   => 'Prioritas laporan berhasil diset.',
@@ -79,9 +77,9 @@ class AdminComplaintController extends Controller
             ->firstOrFail();
 
         $timestamps = [
-            'diverifikasi' => ['verified_at'   => now()],
-            'diproses'     => ['processed_at'  => now()],
-            'selesai'      => ['completed_at'  => now()],
+            'diverifikasi' => ['verified_at'  => now()],
+            'diproses'     => ['processed_at' => now()],
+            'selesai'      => ['completed_at' => now()],
             'ditolak'      => [],
         ];
 
@@ -112,7 +110,7 @@ class AdminComplaintController extends Controller
         $request->validate([
             'message'               => 'required|string',
             'status_after_response' => 'required|in:diverifikasi,diproses,selesai,ditolak',
-            'estimated_at'          => 'nullable|date|after:now', // ← tambah validasi
+            'estimated_at'          => 'nullable|date|after:now',
             'images'                => 'nullable|array|max:5',
             'images.*'              => 'image|mimes:jpg,jpeg,png|max:5120',
         ]);
@@ -129,10 +127,9 @@ class AdminComplaintController extends Controller
             'admin_id'              => $admin->id,
             'status_after_response' => $request->status_after_response,
             'message'               => $request->message,
-            'estimated_at'          => $request->estimated_at ?? null, // ← fix utama
+            'estimated_at'          => $request->estimated_at ?? null,
         ]);
 
-        // Simpan foto bukti ke Cloudinary kalau ada
         if ($request->hasFile('images')) {
             $cloudinary = new \App\Services\CloudinaryService();
 
@@ -167,11 +164,18 @@ class AdminComplaintController extends Controller
             'changed_by'   => $admin->id,
         ]);
 
+        // Notify user pelapor
         Notification::create([
             'user_id'      => $complaint->created_by,
             'complaint_id' => $complaint->id,
             'message'      => 'Laporan ' . $complaint->tracking_id . ' telah direspons oleh admin.',
         ]);
+
+        // Notify admin wilayah + superadmin
+        $this->notifyAdminsAndSuperAdmins(
+            $complaint,
+            'Laporan ' . $complaint->tracking_id . ' statusnya diubah menjadi ' . $request->status_after_response . '.'
+        );
 
         AdminSystemLog::create([
             'admin_id' => $admin->id,
@@ -184,6 +188,58 @@ class AdminComplaintController extends Controller
         ], 201);
     }
 
+    public function updateComment(Request $request, string $commentId): JsonResponse
+    {
+        $request->validate([
+            'message' => 'required|string',
+        ]);
+
+        $comment = Comment::findOrFail($commentId);
+        $comment->update(['message' => $request->message]);
+
+        AdminSystemLog::create([
+            'admin_id' => $request->user()->id,
+            'action'   => 'UPDATE_COMPLAINT',
+        ]);
+
+        return response()->json([
+            'message' => 'Tanggapan resmi berhasil diperbarui.',
+            'comment' => $comment,
+        ]);
+    }
+
+    public function destroyComment(Request $request, string $commentId): JsonResponse
+    {
+        $comment = Comment::findOrFail($commentId);
+
+        $firstComment = Comment::where('complaint_id', $comment->complaint_id)
+            ->orderBy('created_at', 'asc')
+            ->first();
+
+        if ($firstComment && $comment->id === $firstComment->id) {
+            return response()->json([
+                'message' => 'Tanggapan utama tidak diperbolehkan untuk dihapus karena mengikat status awal laporan. Anda hanya diperkenankan mengubah isi teks tanggapan (Edit).',
+            ], 403);
+        }
+
+        if (method_exists($comment, 'images') && $comment->images()) {
+            $comment->images()->delete();
+        } elseif (method_exists($comment, 'adminResponseImages') && $comment->adminResponseImages()) {
+            $comment->adminResponseImages()->delete();
+        }
+
+        $comment->delete();
+
+        AdminSystemLog::create([
+            'admin_id' => $request->user()->id,
+            'action'   => 'UPDATE_COMPLAINT',
+        ]);
+
+        return response()->json([
+            'message' => 'Tanggapan tambahan berhasil dihapus.',
+        ]);
+    }
+
     public function addResponse(Request $request, string $id): JsonResponse
     {
         $request->validate([
@@ -193,19 +249,12 @@ class AdminComplaintController extends Controller
             'image_longitude' => 'required|numeric',
         ]);
 
-        /** @var User $admin */
-        $admin = $request->user();
-
-        $complaint = Complaint::where('id', $id)
-            ->where('wilayah', $admin->wilayah)
-            ->firstOrFail();
-
-        $imageLat = (float) $request->image_latitude;
-        $imageLng = (float) $request->image_longitude;
+        $complaint = Complaint::where('id', $id)->firstOrFail();
 
         $distance    = $this->calculateDistance(
             $complaint->latitude, $complaint->longitude,
-            $imageLat, $imageLng
+            (float) $request->image_latitude,
+            (float) $request->image_longitude
         );
         $isValidated = $distance <= 0.5;
 
@@ -214,6 +263,25 @@ class AdminComplaintController extends Controller
             'is_validated' => $isValidated,
             'distance_km'  => round($distance, 2),
         ]);
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────
+
+    private function notifyAdminsAndSuperAdmins(Complaint $complaint, string $message): void
+    {
+        User::where('role', 'admin')->where('wilayah', $complaint->wilayah)->get()
+            ->each(fn($admin) => Notification::create([
+                'user_id'      => $admin->id,
+                'complaint_id' => $complaint->id,
+                'message'      => $message,
+            ]));
+
+        User::where('role', 'superadmin')->get()
+            ->each(fn($sa) => Notification::create([
+                'user_id'      => $sa->id,
+                'complaint_id' => $complaint->id,
+                'message'      => $message,
+            ]));
     }
 
     private function calculateDistance(float $lat1, float $lng1, float $lat2, float $lng2): float

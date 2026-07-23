@@ -11,14 +11,16 @@ class Comment extends Model
 
     protected $fillable = [
         'admin_id',
+        'petugas_id',
         'complaint_id',
         'status_after_response',
         'message',
-        'estimated_at',         
+        'estimated_at',
+        'type',
     ];
 
     protected $casts = [
-        'estimated_at' => 'datetime', // ← otomatis cast ke Carbon
+        'estimated_at' => 'datetime',
     ];
 
     public function complaint()
@@ -29,6 +31,11 @@ class Comment extends Model
     public function admin()
     {
         return $this->belongsTo(User::class, 'admin_id');
+    }
+
+    public function petugas()
+    {
+        return $this->belongsTo(User::class, 'petugas_id');
     }
 
     public function images()
